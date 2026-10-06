@@ -68,7 +68,7 @@ Developer
 # 📁 Project Structure
 
 ```text
-my-first-cicd-project/
+my-cicd-project-day1/
 │
 ├── app.py
 │
