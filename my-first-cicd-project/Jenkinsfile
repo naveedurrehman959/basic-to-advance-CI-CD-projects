@@ -1,6 +1,14 @@
 pipeline {
   agent any
+
   stages {
+    stage ('check workspace') {
+      steps { 
+        sh 'pwd'
+        sh 'ls -la'
+        sh 'ls -la my-first-cicd-project
+      }
+    } 
     stage ('installing depdencies') {
       steps {
         sh 'python3 -m venv .venv'
