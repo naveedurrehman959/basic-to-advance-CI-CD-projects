@@ -1,35 +1,41 @@
 pipeline {
-  agent any
+    agent any
 
-  stages {
-    stage ('check workspace') {
-      steps { 
-        sh 'pwd'
-        sh 'ls -la'
-        sh 'ls -la my-first-cicd-project'
-      }
-    } 
-    stage ('installing depdencies') {
-      steps {
-        sh 'cd my-first-cicd-project'
-        sh 'python3 -m venv .venv'
-        sh '.venv/bin/pip install -r requirements.txt'
-      }
-    }
-    stage ('test') {
-      steps {
-        sh '.venv/bin/python -m pytest'
-      }
+    stages {
+
+        stage('Check Workspace') {
+            steps {
+                sh 'pwd'
+                sh 'ls -la'
+                sh 'ls -la my-first-cicd-project'
+            }
+        }
+
+        stage('Install Dependencies') {
+            steps {
+                dir('my-first-cicd-project') {
+                    sh 'python3 -m venv .venv'
+                    sh '.venv/bin/python -m pip install -r requirements.txt'
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                dir('my-first-cicd-project') {
+                    sh '.venv/bin/python -m pytest'
+                }
+            }
+        }
     }
 
-  }
-  post {
-    success {
-      echo 'CI pipeline completed successfully'
+    post {
+        success {
+            echo 'CI Pipeline completed successfully!'
+        }
+
+        failure {
+            echo 'CI Pipeline failed!'
+        }
     }
-    failure {
-      echo 'CI pipeline failed'
-    }
-    
-  }
 }
