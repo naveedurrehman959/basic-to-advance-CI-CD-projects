@@ -6,7 +6,7 @@ pipeline {
       steps { 
         sh 'pwd'
         sh 'ls -la'
-        sh 'ls -la my-first-cicd-project
+        sh 'ls -la my-first-cicd-project'
       }
     } 
     stage ('installing depdencies') {
