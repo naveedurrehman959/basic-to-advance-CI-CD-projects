@@ -1,0 +1,26 @@
+pipeline {
+  agent any
+  stages {
+    stage ('installing depdencies') {
+      steps {
+        sh 'python3 -m venv .venv'
+        sh '.venv/bin/pip install -r requirements.txt'
+      }
+    }
+    stage ('test') {
+      steps {
+        sh '.venv/bin/python -m pytest'
+      }
+    }
+
+  }
+  post {
+    success {
+      echo 'CI pipeline completed successfully'
+    }
+    failure {
+      echo 'CI pipeline failed'
+    }
+    
+  }
+}
