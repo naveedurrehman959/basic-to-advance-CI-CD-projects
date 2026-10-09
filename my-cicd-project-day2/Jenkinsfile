@@ -2,7 +2,7 @@
 pipeline {
     agent any
     environment:
-      TAG: "${env.BUILD_NUMBER}"
+      TAG:"${env.BUILD_NUMBER}"
     stages {
         stage ('install dependencies') {
           steps {
