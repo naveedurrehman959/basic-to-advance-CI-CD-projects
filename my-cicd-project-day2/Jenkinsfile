@@ -2,8 +2,8 @@
 pipeline {
     agent any
     environment:
-      IMAGE: "docker.io/naveedurehman/jenkin-cicd-repo"
-      TAG: "${BUILD_NUMBER}""
+    //   MAGE: "docker.io/naveedurehman/jenkin-cicd-repo"
+      TAG: "${BUILD_NUMBER}"
     stages {
         stage ('install dependencies') {
           steps {
@@ -18,12 +18,13 @@ pipeline {
         }
         stage ('build') {
             steps {
-                sh 'docker build -t $Image:$TAG -t $IMAGE:latest'
+                sh 'docker build -t my-flask-app:$TAG .'
             }
         }
         stage ('run container') {
             steps {
-                sh 'docker run -d --name cicd-day2-cont $IMAGE:$TAG .'
+                sh 'docker rm -f cicd-day2-cont || true'
+                sh 'docker run -d --name cicd-day2-cont my-flask-app:$TAG .'
             }
         }
         stage ('test container') {
