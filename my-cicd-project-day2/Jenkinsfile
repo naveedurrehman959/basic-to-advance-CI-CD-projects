@@ -2,8 +2,7 @@
 pipeline {
     agent any
     environment:
-    //   MAGE: "docker.io/naveedurehman/jenkin-cicd-repo"
-      TAG: "${BUILD_NUMBER}"
+      TAG: "${env.BUILD_NUMBER}"
     stages {
         stage ('install dependencies') {
           steps {
