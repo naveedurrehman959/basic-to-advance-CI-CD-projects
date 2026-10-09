@@ -1,56 +1,151 @@
-
 pipeline {
+
+    // agent any means Jenkins can run this pipeline
+    // on any available agent (the machine that executes jobs).
     agent any
-    // environment:
-    //   TAG:"${env.BUILD_NUMBER}"
+
+    // The environment block can define variables that
+    // are available throughout the pipeline.
+    // We are not using a custom environment variable here
+    // because Jenkins already provides BUILD_NUMBER.
+
+    // stages contains all the steps our pipeline will perform.
     stages {
-        stage ('install dependencies') {
+
+        // ==========================================
+        // STAGE 1: INSTALL DEPENDENCIES
+        // ==========================================
+        // Install the Python packages required by our app.
+        stage('install dependencies') {
             steps {
+
+                // Run the following commands inside the project directory.
+                // This assumes the folder exists inside Jenkins' workspace.
                 dir('my-cicd-project-day2') {
-                 sh 'python3 -m venv .venv'
-                 sh '.venv/bin/python -m pip install -r requirements.txt'
+
+                    // Create a virtual environment named .venv.
+                    // A virtual environment keeps this project's
+                    // Python packages separate from other projects.
+                    sh 'python3 -m venv .venv'
+
+                    // Install the packages listed in requirements.txt.
+                    // These may include Flask and pytest.
+                    sh '.venv/bin/python -m pip install -r requirements.txt'
                 }
             }
         }
-        stage ('test') {
+
+        // ==========================================
+        // STAGE 2: TEST THE PYTHON APPLICATION
+        // ==========================================
+        // Run automated tests before building the Docker image.
+        stage('test') {
             steps {
+
+                // Enter the project directory so pytest can
+                // find the application and the tests.
                 dir('my-cicd-project-day2') {
-                   sh '.venv/bin/python -m pytest'
+
+                    // Run the tests using pytest.
+                    // If a test fails, Jenkins marks this stage
+                    // as failed and normally skips later stages.
+                    sh '.venv/bin/python -m pytest'
                 }
             }
         }
-        stage ('build') {
+
+        // ==========================================
+        // STAGE 3: BUILD THE DOCKER IMAGE
+        // ==========================================
+        // Package the application into a Docker image.
+        stage('build') {
             steps {
+
+                // Enter the directory containing the Dockerfile.
                 dir('my-cicd-project-day2') {
-                   sh 'docker build -t my-flask-app:${BUILD_NUMBER} .'
+
+                    // Build a Docker image from the Dockerfile.
+                    //
+                    // -t gives the image a name and a tag.
+                    // my-flask-app is the image name.
+                    // BUILD_NUMBER is supplied automatically by Jenkins.
+                    //
+                    // For example, build number 5 creates:
+                    // my-flask-app:5
+                    //
+                    // The final dot means Docker should use
+                    // the current directory as its build context.
+                    sh 'docker build -t my-flask-app:${BUILD_NUMBER} .'
                 }
-            } 
+            }
         }
-        stage ('run container') {
+
+        // ==========================================
+        // STAGE 4: RUN THE DOCKER CONTAINER
+        // ==========================================
+        // Start a container from the image we just built.
+        stage('run container') {
             steps {
+
+                // Remove the previous test container if it exists.
+                //
+                // -f stops and removes the container.
+                // || true prevents the pipeline from failing
+                // when there is no old container to remove.
                 sh 'docker rm -f cicd-day2-cont || true'
+
+                // Start a container from the image built above.
+                //
+                // -d runs the container in the background.
+                // --name gives the container a recognizable name.
+                // -p 5000:5000 maps host port 5000 to container port 5000.
+                // BUILD_NUMBER selects the image from this Jenkins build.
                 sh 'docker run -d --name cicd-day2-cont -p 5000:5000 my-flask-app:${BUILD_NUMBER}'
             }
         }
-        stage ('test container') {
+
+        // ==========================================
+        // STAGE 5: TEST THE RUNNING CONTAINER
+        // ==========================================
+        // Check whether the application responds over HTTP.
+        stage('test container') {
             steps {
+
+                // Wait five seconds to give Flask time to start.
+                // This is a simple beginner approach; a retry-based
+                // health check can be added later.
                 sh 'sleep 5'
-                sh 'curl http://localhost:5000'
-                sh 'curl http://localhost:5000/health'
+
+                // Send an HTTP request to the home page.
+                // By default, curl does not fail for every HTTP error.
+                sh 'curl --fail http://localhost:5000/'
+
+                // Send an HTTP request to the health endpoint.
+                // --fail makes curl return a non-zero exit code
+                // if the server responds with an HTTP error status.
+                sh 'curl --fail http://localhost:5000/health'
             }
         }
-
     }
+
+    // ==========================================
+    // POST ACTIONS: REPORT THE FINAL RESULT
+    // ==========================================
+    // These actions run after the pipeline stages finish.
     post {
+
+        // Run this action when all stages succeed.
         success {
             echo 'CI/CD Pipeline completed successfully!'
             echo 'Python tests passed.'
             echo 'Docker image built successfully.'
             echo 'Container health check passed.'
         }
+
+        // Run this action if the pipeline fails.
         failure {
             echo 'CI/CD Pipeline failed!'
-            echo 'Please check the failed stage.'
+            echo 'Please check the failed stage in the Jenkins console output.'
         }
     }
 }
