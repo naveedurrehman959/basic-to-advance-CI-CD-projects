@@ -17,13 +17,13 @@ pipeline {
         }
         stage ('build') {
             steps {
-                sh 'docker build -t my-flask-app:$TAG .'
+                sh 'docker build -t my-flask-app:${BUILD_NUMBER} .'
             }
         }
         stage ('run container') {
             steps {
                 sh 'docker rm -f cicd-day2-cont || true'
-                sh 'docker run -d --name cicd-day2-cont my-flask-app:${BUILD_NUMBER} .'
+                sh 'docker run -d --name cicd-day2-cont -p 5000:5000 my-flask-app:${BUILD_NUMBER}'
             }
         }
         stage ('test container') {
