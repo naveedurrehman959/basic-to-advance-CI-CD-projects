@@ -1,0 +1,50 @@
+
+pipeline {
+    agent any
+    environment:
+      IMAGE: "docker.io/naveedurehman/jenkin-cicd-repo"
+      TAG: "${BUILD_NUMBER}""
+    stages {
+        stage ('install dependencies') {
+          steps {
+            sh 'python3 -m venv .venv'
+            sh '.venv/bin/python -m pip install -r requirements.txt'
+          }
+        }
+        stage ('test') {
+            steps {
+                sh '.venv/bin/python -m pytest'
+            }
+        }
+        stage ('build') {
+            steps {
+                sh 'docker build -t $Image:$TAG -t $IMAGE:latest'
+            }
+        }
+        stage ('run container') {
+            steps {
+                sh 'docker run -d --name cicd-day2-cont $IMAGE:$TAG .'
+            }
+        }
+        stage ('test container') {
+            steps {
+                sh 'sleep 5'
+                sh 'curl http://localhost:5000'
+                sh 'curl http://localhost:5000/health'
+            }
+        }
+
+    }
+    post {
+        success {
+            echo 'CI/CD Pipeline completed successfully!'
+            echo 'Python tests passed.'
+            echo 'Docker image built successfully.'
+            echo 'Container health check passed.'
+        }
+        failure {
+            echo 'CI/CD Pipeline failed!'
+            echo 'Please check the failed stage.'
+        }
+    }
+}
