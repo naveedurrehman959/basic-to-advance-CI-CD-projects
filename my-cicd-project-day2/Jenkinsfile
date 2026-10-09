@@ -5,20 +5,26 @@ pipeline {
     //   TAG:"${env.BUILD_NUMBER}"
     stages {
         stage ('install dependencies') {
-          steps {
-            sh 'python3 -m venv .venv'
-            sh '.venv/bin/python -m pip install -r requirements.txt'
-          }
+            steps {
+                dir('my-cicd-project-day2') {
+                 sh 'python3 -m venv .venv'
+                 sh '.venv/bin/python -m pip install -r requirements.txt'
+                }
+            }
         }
         stage ('test') {
             steps {
-                sh '.venv/bin/python -m pytest'
+                dir('my-cicd-project-day2') {
+                   sh '.venv/bin/python -m pytest'
+                }
             }
         }
         stage ('build') {
             steps {
-                sh 'docker build -t my-flask-app:${BUILD_NUMBER} .'
-            }
+                dir('my-cicd-project-day2') {
+                   sh 'docker build -t my-flask-app:${BUILD_NUMBER} .'
+                }
+            } 
         }
         stage ('run container') {
             steps {
