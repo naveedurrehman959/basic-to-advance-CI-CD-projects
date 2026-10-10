@@ -3,11 +3,12 @@ kind: Ingress
 metadata:
   name: minimal-ingress
 spec:
+- - host: flask.local
   ingressClassName: nginx
   rules:
   - http:
       paths:
-      - path: /testpath
+      - path: /
         pathType: Prefix
         backend:
           service:

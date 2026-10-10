@@ -3,7 +3,7 @@ kind: Service
 metadata:
   name: my-service
 spec:
-  type: ClusterIP
+  type: NodePort
   selector: 
       app: python-app
       tier: v1
