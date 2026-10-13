@@ -1,10 +1,9 @@
 pipeline {
     agent any
     environment {
-       IMAGE_NAME: 'docker.io/naveedurehman/jenkin-cicd-repo'
-       TAG: "${env.BUILD_NUMBER}"
+       IMAGE_NAME= 'docker.io/naveedurehman/jenkin-cicd-repo'
+       TAG = "${env.BUILD_NUMBER}"
     }
-
     stages {
 
         stage('Check Workspace') {
