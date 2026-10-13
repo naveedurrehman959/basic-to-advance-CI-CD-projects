@@ -20,7 +20,7 @@ pipeline {
                     sh 'python3 -m venv .venv'
                     sh '.venv/bin/python -m pip install -r requirements.txt'
                     sh '.venv/bin/pip install bandit'
-                    sh '.venv/bin/pip install pip-audit'
+                    sh '.venv/bin/pip install pip_audit'
                 }
             }
         }
@@ -43,7 +43,7 @@ pipeline {
                 stage('SCA') {
             steps {
                 dir('my-cicd-project-day3') {
-                    sh '.venv/bin/python -m pip-audit -r requirements.txt -f json -o pip-audit-report.json'
+                    sh '.venv/bin/python -m pip_audit -r requirements.txt -f json -o pip-audit-report.json'
 
                 }
             }
