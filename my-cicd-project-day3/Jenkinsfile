@@ -55,7 +55,7 @@ pipeline {
                 }
             }
         }
-        }
+    
         stage('push image') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'dockerhub-id', 
