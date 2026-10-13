@@ -42,7 +42,6 @@ pipeline {
                 stage('SCA') {
             steps {
                 dir('my-cicd-project-day3') {
-                    sh 'python3 -m venv .venv'
                     sh '.venv/bin/python -m pip-audit -r requirements.txt -f json -o pip-audit-report.json'
 
                 }
