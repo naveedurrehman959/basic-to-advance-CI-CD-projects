@@ -1,5 +1,8 @@
 pipeline {
     agent any
+    environment:
+       IMAGE_NAME: 'docker.io/naveedurehman/jenkin-cicd-repo'
+       TAG:"${BUILD_NUMBER}"
 
     stages {
 
@@ -7,26 +10,73 @@ pipeline {
             steps {
                 sh 'pwd'
                 sh 'ls -la'
-                sh 'ls -la my-cicd-project-day1'
+                sh 'ls -la my-cicd-project-day3'
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                dir('my-cicd-project-day1') {
+                dir('my-cicd-project-day3') {
                     sh 'python3 -m venv .venv'
                     sh '.venv/bin/python -m pip install -r requirements.txt'
+                    sh '.venv/bin/pip install bandit pip-audit'
                 }
             }
         }
 
-        stage('Test') {
+        stage('Unit Test') {
             steps {
-                dir('my-cicd-project-day1') {
-                    sh '.venv/bin/python -m pytest'
+                dir('my-cicd-project-day3') {
+                  sh '.venv/bin/python -m pytest'
                 }
             }
         }
+
+        stage('SAST') {
+             steps {
+                 dir('my-cicd-project-day3') {
+                    sh '.venv/bin/python -m bandit -r app.py -f json -o bandit-report.json'
+                }
+             }  
+        }
+                stage('SCA') {
+            steps {
+                dir('my-cicd-project-day3') {
+                    sh 'python3 -m venv .venv'
+                    sh '.venv/bin/python -m pip pip-audit -r requirements.tx -f json -o pip-audit-report.json'
+
+                }
+            }
+        }
+        stage('build image') {
+            steps {
+                dir('my-cicd-project-day1') {
+                  sh 'docker build -t "$IMAGE_NAME:$TAG" -t "$IMAGE_NAME:latest" .'
+                }
+            }
+        }
+        }
+        stage('push image') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'dockerhub-id', 
+                  passwordVariable: 'DOCKER_PASSWORD', 
+                  usernameVariable: 'DOCKERHUB_USERNAME')]) {
+                  sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin'
+                  sh 'docker push "$IMAGE:$TAG"'
+                  sh 'docker push "$IMAGE:latest"'
+                }
+
+            }
+            
+        }
+        stage (deploy){
+            steps{
+                sh 'docker pull "$IMAGE_NAME:$TAG"'
+                sh 'docker rm -rf jenkin-cicd-repo || true'
+                sh 'docker run -d --name jenkin-cicd-repo -p 5000:5000  "$IMAGE_NAME:$TAG"'
+            }
+        }
+
     }
 
     post {
