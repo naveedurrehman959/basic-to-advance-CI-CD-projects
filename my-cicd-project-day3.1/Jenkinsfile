@@ -82,7 +82,7 @@ pipeline {
                           -v "$PWD:/work" \
                           -v trivy-cache:/root/.cache/trivy \
                           aquasec/trivy:0.75.0 image \
-                          --timeout 15m \
+                          --timeout 30m \
                           --db-repository ghcr.io/aquasecurity/trivy-db:2 \
                           --scanners vuln \
                           --severity HIGH,CRITICAL \
