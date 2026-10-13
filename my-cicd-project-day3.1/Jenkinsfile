@@ -1,9 +1,12 @@
+
 pipeline {
     agent any
+
     environment {
-       IMAGE_NAME= 'docker.io/naveedurehman/jenkin-cicd-repo'
-       TAG = "${env.BUILD_NUMBER}"
+        IMAGE_NAME = 'docker.io/naveedurehman/jenkin-cicd-repo'
+        TAG = "${BUILD_NUMBER}"
     }
+
     stages {
 
         stage('Check Workspace') {
@@ -19,8 +22,7 @@ pipeline {
                 dir('my-cicd-project-day3.1') {
                     sh 'python3 -m venv .venv'
                     sh '.venv/bin/python -m pip install -r requirements.txt'
-                    sh '.venv/bin/pip install bandit'
-                    sh '.venv/bin/pip install pip_audit'
+                    sh '.venv/bin/python -m pip install bandit pip-audit'
                 }
             }
         }
@@ -28,79 +30,121 @@ pipeline {
         stage('Unit Test') {
             steps {
                 dir('my-cicd-project-day3.1') {
-                  sh '.venv/bin/python -m pytest'
+                    sh '.venv/bin/python -m pytest'
                 }
             }
         }
 
-        stage('SAST') {
-             steps {
-                 dir('my-cicd-project-day3.1') {
-                    sh '.venv/bin/python -m bandit -r app.py -f json -o bandit-report.json'
-                }
-             }  
-        }
-                stage('SCA') {
+        stage('SAST - Bandit') {
             steps {
                 dir('my-cicd-project-day3.1') {
-                    sh '.venv/bin/python -m pip_audit -r requirements.txt -f json -o pip-audit-report.json'
-
+                    sh '''
+                        .venv/bin/python -m bandit \
+                          -r app.py \
+                          -f json \
+                          -o bandit-report.json
+                    '''
                 }
             }
         }
-        stage('build image') {
+
+        stage('SCA - pip-audit') {
             steps {
                 dir('my-cicd-project-day3.1') {
-                  sh 'docker build -t "$IMAGE_NAME:$TAG" -t "$IMAGE_NAME:latest" .'
+                    sh '''
+                        .venv/bin/python -m pip_audit \
+                          -r requirements.txt \
+                          -f json \
+                          -o pip-audit-report.json
+                    '''
                 }
             }
         }
-        stage ('scaninig image') {
+
+        stage('Build Image') {
             steps {
                 dir('my-cicd-project-day3.1') {
-                   sh '''
-                       docker run --rm \
-                       -v /var/run/docker.sock:/var/run/docker.sock \
-                       aquasec/trivy:0.75.0 image \
-                       --timeout 15m \
-                       --db-repository ghcr.io/aquasecurity/trivy-db:2 \
-                       --severity HIGH,CRITICAL \
-                       "$IMAGE_NAME:$TAG"
-                   ''' 
+                    sh '''
+                        docker build \
+                          -t "$IMAGE_NAME:$TAG" \
+                          -t "$IMAGE_NAME:latest" .
+                    '''
                 }
             }
         }
-    
-        stage('push image') {
+
+        stage('Trivy Image Scan') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'dockerhub-id', 
-                  passwordVariable: 'DOCKER_PASSWORD', 
-                  usernameVariable: 'DOCKERHUB_USERNAME')]) {
-                  sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin'
-                  sh 'docker push "$IMAGE_NAME:$TAG"'
-                  sh 'docker push "$IMAGE_NAME:latest"'
+                dir('my-cicd-project-day3.1') {
+                    sh '''
+                        docker run --rm \
+                          -v /var/run/docker.sock:/var/run/docker.sock \
+                          -v "$PWD:/work" \
+                          -v trivy-cache:/root/.cache/trivy \
+                          aquasec/trivy:0.75.0 image \
+                          --timeout 15m \
+                          --db-repository ghcr.io/aquasecurity/trivy-db:2 \
+                          --scanners vuln \
+                          --severity HIGH,CRITICAL \
+                          --exit-code 1 \
+                          --format json \
+                          --output /work/trivy-report.json \
+                          "$IMAGE_NAME:$TAG"
+                    '''
                 }
-
-            }
-            
-        }
-        stage (deploy){
-            steps{
-                sh 'docker pull "$IMAGE_NAME:$TAG"'
-                sh 'docker rm -f jenkin-cicd-repo || true'
-                sh 'docker run -d --name jenkin-cicd-repo -p 5000:5000  "$IMAGE_NAME:$TAG"'
             }
         }
 
+        stage('Push Image') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub-id',
+                        passwordVariable: 'DOCKER_PASSWORD',
+                        usernameVariable: 'DOCKERHUB_USERNAME'
+                    )
+                ]) {
+                    sh '''
+                        echo "$DOCKER_PASSWORD" |
+                          docker login \
+                          -u "$DOCKERHUB_USERNAME" \
+                          --password-stdin
+
+                        docker push "$IMAGE_NAME:$TAG"
+                        docker push "$IMAGE_NAME:latest"
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                sh '''
+                    docker pull "$IMAGE_NAME:$TAG"
+                    docker rm -f jenkin-cicd-repo || true
+                    docker run -d \
+                      --name jenkin-cicd-repo \
+                      -p 5000:5000 \
+                      "$IMAGE_NAME:$TAG"
+                '''
+            }
+        }
     }
 
     post {
+        always {
+            archiveArtifacts(
+                artifacts: 'my-cicd-project-day3.1/*-report.json',
+                allowEmptyArchive: true
+            )
+        }
+
         success {
-            echo 'CI Pipeline completed successfully!'
+            echo 'Pipeline completed successfully!'
         }
 
         failure {
-            echo 'CI Pipeline failed!'
+            echo 'Pipeline failed. Check the stage logs and security reports.'
         }
     }
 }
